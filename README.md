@@ -117,4 +117,4 @@ For issues related to:
 
 ## License
 
-This plugin is part of the Deadline submission system.
+This plugin is written by Antony Bailey on behalf of 10bit FX Ltd.
