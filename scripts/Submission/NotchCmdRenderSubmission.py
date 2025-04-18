@@ -2,15 +2,16 @@ from System import *
 from System.IO import *
 from Deadline.Scripting import *
 from Deadline.Plugins import *
-from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import *
+from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDialog
+from Deadline.Scripting import RepositoryUtils, ClientUtils
 
 import os
 import re
 import time
 from pathlib import Path
 
-# File extension definitions
-ALLOWED_SCENE_EXTENSIONS = ['.dfx']  # Notch project files
+# Original constant definitions
+ALLOWED_SCENE_EXTENSIONS = ['.dfx']
 ALLOWED_OUTPUT_EXTENSIONS = {
     "notchlc": [".mov"],
     "h264": [".mp4"],
@@ -24,7 +25,6 @@ ALLOWED_OUTPUT_EXTENSIONS = {
     "tiff": [".tif", ".tiff"]
 }
 
-# Image codecs that require individual frames
 IMAGE_CODECS = {"exr", "png", "jpg", "tga", "tiff"}
 
 # Default paths
@@ -73,11 +73,9 @@ def is_file_locked(file_path):
 def check_windows_environment():
     """Verify Windows-specific requirements"""
     try:
-        # Check if running on Windows
         if os.name != 'nt':
             return False
             
-        # Check for required Windows features
         required_dirs = [
             os.environ.get('TEMP'),
             os.environ.get('SystemRoot')
@@ -89,30 +87,24 @@ def check_windows_environment():
                 
         return True
         
-    except (KeyError, FileNotFoundError, OSError) as e:  # Handle specific exceptions
+    except (KeyError, FileNotFoundError, OSError) as e:
         print(f"⚠️ Error checking Windows environment: {e}")
         return False
 
 def is_safe_path(path):
-    """
-    Validates if a file path is safe to use.
-    """
+    """Validates if a file path is safe to use."""
     try:
-        # Convert to absolute path and normalize for Windows
         absolute_path = os.path.abspath(normalize_windows_path(path))
         
-        # Check for suspicious characters
         unsafe_chars = ['<', '>', '|', '*', '?', '"', ';', '&', '$']
         if any(char in path for char in unsafe_chars):
             print(f"⚠️ Path contains unsafe characters: {path}")
             return False
             
-        # Check for relative path traversal attempts
         if '..' in path:
             print(f"⚠️ Path contains suspicious traversal patterns: {path}")
             return False
             
-        # Validate path length (Windows MAX_PATH is 260)
         if len(absolute_path) > 260:
             print(f"⚠️ Path exceeds maximum length: {len(absolute_path)} characters")
             return False
@@ -127,15 +119,11 @@ def is_safe_path(path):
         return False
 
 def validate_resolution():
-    """
-    Validates resolution from dialog values.
-    Returns True if valid, False otherwise.
-    """
     width = dialog.GetValue("WidthBox")
     height = dialog.GetValue("HeightBox")
     try:
         w, h = int(width), int(height)
-        if w <= 0 or h <= 0 or w > 16384 or h > 16384:  # Example max resolution
+        if w <= 0 or h <= 0 or w > 16384 or h > 16384:
             print(f"⚠️ Invalid resolution: {w}x{h}")
             return False
         return True
@@ -144,7 +132,6 @@ def validate_resolution():
         return False
 
 def validate_file_extension(filename, allowed_extensions):
-    """Validates if a file has an allowed extension."""
     ext = os.path.splitext(filename)[1].lower()
     if ext not in allowed_extensions:
         print(f"⚠️ Invalid file extension: {ext}. Allowed: {', '.join(allowed_extensions)}")
@@ -152,15 +139,10 @@ def validate_file_extension(filename, allowed_extensions):
     return True
 
 def sanitize_filename(filename):
-    """
-    Sanitizes a filename by removing or replacing unsafe characters.
-    """
-    # Remove or replace unsafe characters
     unsafe_chars = re.compile(r'[<>:"/\\|?*\x00-\x1F]')
     sanitized = unsafe_chars.sub('_', filename)
     
-    # Ensure filename isn't too long
-    MAX_FILENAME_LENGTH = 255  # Maximum filename length for most filesystems
+    MAX_FILENAME_LENGTH = 255
     name, ext = os.path.splitext(sanitized)
     if len(sanitized) > MAX_FILENAME_LENGTH:
         sanitized = name[:MAX_FILENAME_LENGTH-len(ext)] + ext
@@ -168,7 +150,6 @@ def sanitize_filename(filename):
     return sanitized
 
 def cleanup_temp_files(job_info_filename, plugin_info_filename):
-    """Cleans up temporary files with Windows-specific handling"""
     files_to_cleanup = [
         (job_info_filename, "job info"),
         (plugin_info_filename, "plugin info")
@@ -183,7 +164,7 @@ def cleanup_temp_files(job_info_filename, plugin_info_filename):
                 for attempt in range(max_attempts):
                     if is_file_locked(file_path):
                         print(f"⚠️ File is locked, retrying: {file_path} (Attempt {attempt + 1}/{max_attempts})")
-                        time.sleep(1)  # Wait for file to be released
+                        time.sleep(1)
                     else:
                         try:
                             os.remove(file_path)
@@ -204,10 +185,6 @@ def cleanup_temp_files(job_info_filename, plugin_info_filename):
     
     return cleanup_success
 
-# Define default log path
-user_documents = os.path.join(os.path.expanduser("~"), "Documents")
-default_log_path = os.path.join(user_documents, "NotchRenderLog.txt")
-
 def on_codec_changed(*args):
     try:
         selected_codec = dialog.GetValue("CodecBox").lower()
@@ -216,17 +193,6 @@ def on_codec_changed(*args):
         print(f"🎚️ Codec changed to '{selected_codec}' — IndividualFrames set to {is_image_format}")
     except Exception as e:
         print(f"⚠️ Error in codec change handler: {e}")
-
-def validate_input():
-    # Perform all validations and store results
-    scene_valid = validate_scene_file()
-    paths_valid = validate_paths()
-    resolution_valid = validate_resolution()  # Using the updated function
-    log_valid = validate_log_path()
-    codec_valid = validate_codec()
-
-    # Return True only if all validations pass
-    return all([scene_valid, paths_valid, resolution_valid, log_valid, codec_valid])
 
 def validate_scene_file():
     scene = dialog.GetValue("SceneFileBox")
@@ -264,7 +230,6 @@ def validate_codec():
             return False
         return True
     except Exception as e:
-        # Potential causes: dialog.GetValue("CodecBox") might return None or an unexpected type
         log_message("Validation Error", f"⚠️ Error validating codec: {str(e)}")
         return False
 
@@ -293,6 +258,23 @@ def prepare_output():
 
     return os.path.join(output_folder, output_name)
 
+def get_pools():
+    """Get list of available Deadline pools"""
+    try:
+        pools = RepositoryUtils.GetPoolNames()
+        return sorted(pools)
+    except Exception as e:
+        print(f"⚠️ Error getting pools: {e}")
+        return ["none"]
+
+def validate_pool():
+    """Validates that a pool is selected"""
+    pool = dialog.GetValue("PoolBox")
+    if not pool or pool.lower() == "none":
+        log_message("Validation Error", "⚠️ Please select a render pool")
+        return False
+    return True
+
 def write_job_info(job_info_filename, job_name, frame_range, chunk_size):
     try:
         with open(job_info_filename, 'w', encoding='utf-8') as job_file:
@@ -300,6 +282,10 @@ def write_job_info(job_info_filename, job_name, frame_range, chunk_size):
             job_file.write(f"Name={job_name}\n")
             job_file.write(f"Frames={frame_range}\n")
             job_file.write(f"ChunkSize={chunk_size}\n")
+            # Add pool to job info
+            pool = dialog.GetValue("PoolBox")
+            if pool and pool.lower() != "none":
+                job_file.write(f"Pool={pool}\n")
     except IOError as e:
         log_message("File Error", f"⚠️ Failed to write job info file: {e}")
         return False
@@ -335,6 +321,22 @@ def write_plugin_info(plugin_info_filename, scene, output_full_path, individual_
         return False
     return True
 
+def validate_input():
+    # Perform all validations and store results
+    scene_valid = validate_scene_file()
+    paths_valid = validate_paths()
+    resolution_valid = validate_resolution()
+    log_valid = validate_log_path()
+    codec_valid = validate_codec()
+    pool_valid = validate_pool()
+
+    # Return True only if all validations pass
+    return all([scene_valid, paths_valid, resolution_valid, log_valid, codec_valid, pool_valid])
+
+def log_message(title, message):
+    """Log a message with a title prefix"""
+    print(f"{title}: {message}")
+
 def on_submit(*args):
     job_info_filename = None
     plugin_info_filename = None
@@ -364,7 +366,6 @@ def on_submit(*args):
             
         quality = dialog.GetValue("QualityBox").strip()
         bitrate = dialog.GetValue("BitrateBox").strip()
-        # Quality and bitrate are now optional, no validation needed
             
         job_name = dialog.GetValue("JobNameBox")
         refines = dialog.GetValue("RefinesBox")
@@ -409,9 +410,6 @@ def on_cancel(*args):
     print("🔙 Cancel pressed")
     dialog.CloseDialog()
 
-def log_message(title, message):
-    print(f"{title}: {message}")
-
 def __main__():
     try:
         print("✅ Launching NotchCmdRender submission dialog...")
@@ -422,66 +420,69 @@ def __main__():
         dialog.SetTitle("Notch NURA Job Submission")
         dialog.AddGrid()
 
-        # Job Name
+        # Job Name and Pool Selection on same row
         dialog.AddControlToGrid("JobNameLabel", "LabelControl", "Job Name:", 0, 0)
         dialog.AddControlToGrid("JobNameBox", "TextControl", "NotchRenderJob", 0, 1)
+        dialog.AddControlToGrid("PoolLabel", "LabelControl", "Worker Pool:", 0, 2)
+        pool_control = dialog.AddControlToGrid("PoolBox", "ComboControl", "none", 0, 3)
+        dialog.SetItems("PoolBox", get_pools())
 
-        # Scene File input
+        # Scene File input - back to original row number
         dialog.AddControlToGrid("SceneFileLabel", "LabelControl", "Scene File:", 1, 0)
         dialog.AddControlToGrid("SceneFileBox", "FileBrowserControl", "", 1, 1)
 
-        # Output Path
+        # Output Path - adjusted row numbers
         dialog.AddControlToGrid("OutputFolderLabel", "LabelControl", "Output Folder:", 2, 0)
         dialog.AddControlToGrid("OutputFolderBox", "FolderBrowserControl", "", 2, 1)
 
         dialog.AddControlToGrid("OutputNameLabel", "LabelControl", "Output File Name:", 3, 0)
         dialog.AddControlToGrid("OutputNameBox", "TextControl", "", 3, 1)
 
-        # Append frame toggle
+        # Append frame toggle - adjusted row
         dialog.AddControlToGrid("IndividualFramesLabel", "LabelControl", "Individual Frames:", 3, 2)
         dialog.AddControlToGrid("IndividualFramesBox", "CheckBoxControl", False, 3, 3)
 
         # Codec selection
-        dialog.AddControlToGrid("CodecLabel", "LabelControl", "Codec Type:", 5, 0)
-        codec_control = dialog.AddControlToGrid("CodecBox", "ComboControl", "notchlc", 5, 1)
+        dialog.AddControlToGrid("CodecLabel", "LabelControl", "Codec Type:", 4, 0)
+        codec_control = dialog.AddControlToGrid("CodecBox", "ComboControl", "notchlc", 4, 1)
         dialog.SetItems("CodecBox", ["notchlc", "h264", "h265", "hap", "mov", "exr", "png", "jpg", "tga", "tiff"])
 
         # Quality and Bitrate
-        dialog.AddControlToGrid("QualityLabel", "LabelControl", "Quality:", 5, 2)
-        dialog.AddControlToGrid("QualityBox", "TextControl", "", 5, 3)
+        dialog.AddControlToGrid("QualityLabel", "LabelControl", "Quality:", 4, 2)
+        dialog.AddControlToGrid("QualityBox", "TextControl", "", 4, 3)
 
-        dialog.AddControlToGrid("BitrateLabel", "LabelControl", "Bitrate:", 5, 4)
-        dialog.AddControlToGrid("BitrateBox", "TextControl", "", 5, 5)
+        dialog.AddControlToGrid("BitrateLabel", "LabelControl", "Bitrate:", 4, 4)
+        dialog.AddControlToGrid("BitrateBox", "TextControl", "", 4, 5)
 
         # Resolution
-        dialog.AddControlToGrid("WidthLabel", "LabelControl", "Width:", 6, 0)
-        dialog.AddControlToGrid("WidthBox", "TextControl", "1920", 6, 1)
+        dialog.AddControlToGrid("WidthLabel", "LabelControl", "Width:", 5, 0)
+        dialog.AddControlToGrid("WidthBox", "TextControl", "1920", 5, 1)
 
-        dialog.AddControlToGrid("HeightLabel", "LabelControl", "Height:", 6, 2)
-        dialog.AddControlToGrid("HeightBox", "TextControl", "1080", 6, 3)
+        dialog.AddControlToGrid("HeightLabel", "LabelControl", "Height:", 5, 2)
+        dialog.AddControlToGrid("HeightBox", "TextControl", "1080", 5, 3)
 
         # Frame Range
-        dialog.AddControlToGrid("StartFrameLabel", "LabelControl", "Start Frame:", 7, 0)
-        dialog.AddControlToGrid("StartFrameBox", "TextControl", "0", 7, 1)
+        dialog.AddControlToGrid("StartFrameLabel", "LabelControl", "Start Frame:", 6, 0)
+        dialog.AddControlToGrid("StartFrameBox", "TextControl", "0", 6, 1)
 
-        dialog.AddControlToGrid("EndFrameLabel", "LabelControl", "End Frame:", 7, 2)
-        dialog.AddControlToGrid("EndFrameBox", "TextControl", "100", 7, 3)
+        dialog.AddControlToGrid("EndFrameLabel", "LabelControl", "End Frame:", 6, 2)
+        dialog.AddControlToGrid("EndFrameBox", "TextControl", "100", 6, 3)
 
         # FPS
-        dialog.AddControlToGrid("FPSLabel", "LabelControl", "FPS:", 8, 0)
-        dialog.AddControlToGrid("FPSBox", "TextControl", "30", 8, 1)
+        dialog.AddControlToGrid("FPSLabel", "LabelControl", "FPS:", 7, 0)
+        dialog.AddControlToGrid("FPSBox", "TextControl", "30", 7, 1)
 
         # Refines
-        dialog.AddControlToGrid("RefinesLabel", "LabelControl", "Refines:", 9, 0)
-        dialog.AddControlToGrid("RefinesBox", "TextControl", "1", 9, 1)
+        dialog.AddControlToGrid("RefinesLabel", "LabelControl", "Refines:", 8, 0)
+        dialog.AddControlToGrid("RefinesBox", "TextControl", "1", 8, 1)
 
         # Layer
-        dialog.AddControlToGrid("LayerLabel", "LabelControl", "Layer:", 10, 0)
-        dialog.AddControlToGrid("LayerBox", "TextControl", "", 10, 1)
+        dialog.AddControlToGrid("LayerLabel", "LabelControl", "Layer:", 9, 0)
+        dialog.AddControlToGrid("LayerBox", "TextControl", "", 9, 1)
 
         # Log File
-        dialog.AddControlToGrid("LogLabel", "LabelControl", "Log File:", 14, 0)
-        dialog.AddControlToGrid("LogBox", "TextControl", default_log_path, 14, 1)
+        dialog.AddControlToGrid("LogLabel", "LabelControl", "Log File:", 10, 0)
+        dialog.AddControlToGrid("LogBox", "TextControl", default_log_path, 10, 1)
 
         dialog.EndGrid()
 
@@ -491,7 +492,7 @@ def __main__():
         cancelButton = dialog.AddControlToGrid("CancelButton", "ButtonControl", "Cancel", 0, 1, expand=False)
         dialog.EndGrid()
 
-        # Connect the handlers
+        # Connect handlers
         submitButton.ValueModified.connect(on_submit)
         cancelButton.ValueModified.connect(on_cancel)
         codec_control.ValueModified.connect(on_codec_changed)
