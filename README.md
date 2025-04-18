@@ -54,9 +54,9 @@ A Deadline submission plugin for rendering Notch (.dfx) files using the Notch Co
     │     ├─ NotchCmdRender.param
     │     └─ NotchCmdRender.py
     └─ scripts/
-    └─ Submission/
-        ├─ icon.png
-        └─ NotchCmdRenderSubmission.py
+       └─ Submission/
+           ├─ icon.png
+           └─ NotchCmdRenderSubmission.py
 
 2. Ensure the Notch Command Line Renderer is installed in the default location or update the path in `NotchCmdRender.param`
 
@@ -73,18 +73,19 @@ The plugin can be configured through `NotchCmdRender.param`:
 2. Click "Submit Job"
 3. Select "Notch NURA Job Submission"
 4. Fill in the required fields:
-- Job Name
-- Worker Pool
-- Scene File (.dfx)
-- Output Folder and Filename
-- Codec Type
-- Resolution
-- Frame Range
-- FPS
-- Quality/Bitrate (optional)
-- Refines (optional)
-- Layer (optional)
-- Log File (optional)
+   - Job Name
+   - Worker Pool
+   - Scene File (.dfx)
+   - Output Folder and Filename
+   - Codec Type
+   - Resolution
+   - Frame Range
+   - FPS
+   - Quality/Bitrate (optional)
+   - Refines (optional)
+   - Layer (optional)
+   - Log File (optional)
+5. Click "Submit" to send the job to Deadline
 
 ## Features in Detail
 
