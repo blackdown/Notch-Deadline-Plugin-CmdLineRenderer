@@ -4,6 +4,7 @@ from Deadline.Scripting import *
 from Deadline.Plugins import *
 from DeadlineUI.Controls.Scripting.DeadlineScriptDialog import DeadlineScriptDialog
 from Deadline.Scripting import RepositoryUtils, ClientUtils
+from Deadline.Events import EventManager
 
 import os
 import re
@@ -41,15 +42,17 @@ def get_temp_directory():
             f.write("test")
         os.remove(test_file)
     except (OSError, IOError) as e:
-        print(f"⚠️ Error accessing temp directory: {e}")
-        fallback_dir = os.getcwd()
-        print(f"⚠️ Using fallback directory: {fallback_dir}")
-        return fallback_dir
+        title = "Temp Directory"
+        error_msg = f"Error accessing temp directory: {e}\nUsing fallback directory: {os.getcwd()}"
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
+        return os.getcwd()
     except Exception as e:
-        print(f"⚠️ Unexpected error while creating temp directory: {type(e).__name__}: {e}")
-        fallback_dir = os.getcwd()
-        print(f"⚠️ Using fallback directory: {fallback_dir}")
-        return fallback_dir
+        title = "Temp Directory"
+        error_msg = f"Unexpected error creating temp directory: {type(e).__name__}: {e}\nUsing fallback directory: {os.getcwd()}"
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
+        return os.getcwd()
     return temp_dir
 
 def normalize_windows_path(path):
@@ -98,24 +101,33 @@ def is_safe_path(path):
         
         unsafe_chars = ['<', '>', '|', '*', '?', '"', ';', '&', '$']
         if any(char in path for char in unsafe_chars):
-            print(f"⚠️ Path contains unsafe characters: {path}")
+            title = "Path"
+            error_msg = f"Path contains unsafe characters: {path}"
+            dialog.ShowMessageBox(error_msg, title, ("Ok",))
+            print(f"ERROR: {title}: {error_msg}")
             return False
             
         if '..' in path:
-            print(f"⚠️ Path contains suspicious traversal patterns: {path}")
+            title = "Path"
+            error_msg = f"Path contains suspicious traversal patterns: {path}"
+            dialog.ShowMessageBox(error_msg, title, ("Ok",))
+            print(f"ERROR: {title}: {error_msg}")
             return False
             
         if len(absolute_path) > 260:
-            print(f"⚠️ Path exceeds maximum length: {len(absolute_path)} characters")
+            title = "Path"
+            error_msg = f"Path exceeds maximum length ({len(absolute_path)} characters)"
+            dialog.ShowMessageBox(error_msg, title, ("Ok",))
+            print(f"ERROR: {title}: {error_msg}")
             return False
             
         return True
         
-    except OSError as e:
-        print(f"⚠️ Path validation error (OS-related): {e}")
-        return False
     except Exception as e:
-        print(f"⚠️ Unexpected path validation error: {e}")
+        title = "Path"
+        error_msg = f"Path validation error: {str(e)}"
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
         return False
 
 def validate_resolution():
@@ -124,17 +136,38 @@ def validate_resolution():
     try:
         w, h = int(width), int(height)
         if w <= 0 or h <= 0 or w > 16384 or h > 16384:
-            print(f"⚠️ Invalid resolution: {w}x{h}")
+            title = "Resolution"
+            error_msg = (
+                f"Invalid resolution: {w}x{h}\n\n"
+                f"Resolution must be between 1x1 and 16384x16384"
+            )
+            dialog.ShowMessageBox(error_msg, title, ("Ok",))
+            print(f"ERROR: {title}: {error_msg}")
             return False
         return True
     except (ValueError, TypeError):
-        print("⚠️ Resolution must be numeric")
+        title = "Resolution"
+        error_msg = "Resolution values must be valid numbers"
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
         return False
 
 def validate_file_extension(filename, allowed_extensions):
+    """Validates that a file has an allowed extension"""
     ext = os.path.splitext(filename)[1].lower()
     if ext not in allowed_extensions:
-        print(f"⚠️ Invalid file extension: {ext}. Allowed: {', '.join(allowed_extensions)}")
+        # Build a more detailed error message
+        error_title = "Invalid File Extension" 
+        error_detail = (
+            f"The file extension '{ext}' is not supported.\n\n"
+            f"Allowed extensions: {', '.join(allowed_extensions)}"
+        )
+        
+        # Use Deadline's built-in dialog system - message body first, then title
+        dialog.ShowMessageBox(error_detail, error_title, ("Ok",))
+        
+        # Log the error
+        print(f"ERROR: {error_title}: {error_detail}")
         return False
     return True
 
@@ -163,24 +196,33 @@ def cleanup_temp_files(job_info_filename, plugin_info_filename):
                 max_attempts = 5
                 for attempt in range(max_attempts):
                     if is_file_locked(file_path):
-                        print(f"⚠️ File is locked, retrying: {file_path} (Attempt {attempt + 1}/{max_attempts})")
+                        if attempt == max_attempts - 1:
+                            title = "File Locked"
+                            error_msg = f"File is still locked after {max_attempts} attempts:\n{file_path}"
+                            dialog.ShowMessageBox(error_msg, title, ("Ok",))
+                            print(f"WARNING: {title}: {error_msg}")
                         time.sleep(1)
                     else:
                         try:
                             os.remove(file_path)
-                            print(f"✅ Cleaned up {file_type} file: {file_path}")
+                            print(f"INFO: Cleanup: Cleaned up {file_type} file")
                             break
                         except PermissionError:
                             if attempt == max_attempts - 1:
-                                print(f"❌ Failed to remove {file_type} file after {max_attempts} attempts: {file_path}")
+                                title = "Permission Error"
+                                error_msg = f"Failed to remove {file_type} file:\n{file_path}"
+                                dialog.ShowMessageBox(error_msg, title, ("Ok",))
+                                print(f"ERROR: {title}: {error_msg}")
                                 cleanup_success = False
                 else:
-                    print(f"❌ File remained locked after {max_attempts} attempts: {file_path}")
                     cleanup_success = False
             else:
-                print(f"ℹ️ {file_type} file not found: {file_path}")
+                print(f"INFO: Cleanup: {file_type} file not found: {file_path}")
         except Exception as e:
-            print(f"❌ Error while cleaning up {file_type} file: {e}")
+            title = "Cleanup Error"
+            error_msg = f"Error cleaning up {file_type} file:\n{file_path}\n\nError: {str(e)}"
+            dialog.ShowMessageBox(error_msg, title, ("Ok",))
+            print(f"ERROR: {title}: {error_msg}")
             cleanup_success = False
     
     return cleanup_success
@@ -190,29 +232,49 @@ def on_codec_changed(*args):
         selected_codec = dialog.GetValue("CodecBox").lower()
         is_image_format = selected_codec in IMAGE_CODECS
         dialog.SetValue("IndividualFramesBox", is_image_format)
-        print(f"🎚️ Codec changed to '{selected_codec}' — IndividualFrames set to {is_image_format}")
+        # Only print codec changes, don't show GUI message
+        print(f"INFO: Codec Changed: {selected_codec} - Individual Frames: {is_image_format}")
     except Exception as e:
-        print(f"⚠️ Error in codec change handler: {e}")
+        error_msg = f"Error in codec change handler: {e}"
+        dialog.ShowMessageBox(error_msg, "Codec Error", ("Ok",))
+        print(f"ERROR: Codec Error: {error_msg}")
 
 def validate_scene_file():
     scene = dialog.GetValue("SceneFileBox")
+    if not scene:
+        title = "Scene File"
+        error_msg = "No scene file selected.\nPlease select a Notch (.dfx) file."
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
+        return False
     if not validate_file_extension(scene, ALLOWED_SCENE_EXTENSIONS):
-        log_message("Validation Error", "⚠️ Invalid scene file type - must be a .notch file")
         return False
     return True
 
 def validate_paths():
     scene = dialog.GetValue("SceneFileBox")
     output_folder = dialog.GetValue("OutputFolderBox")
-    if not is_safe_path(scene) or not is_safe_path(output_folder):
-        log_message("Validation Error", "⚠️ Invalid file path")
+    
+    errors = []
+    if not is_safe_path(scene):
+        errors.append(f"Invalid scene file path:\n{scene}")
+    if not is_safe_path(output_folder):
+        errors.append(f"Invalid output folder path:\n{output_folder}")
+        
+    if errors:
+        title = "Path Validation"
+        error_msg = "\n\n".join(errors)
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
         return False
     return True
 
 def validate_log_path():
     log = dialog.GetValue("LogBox")
     if log and not is_safe_path(log):
-        log_message("Validation Error", "⚠️ Invalid log file path")
+        error_msg = "Invalid log file path"
+        dialog.ShowMessageBox(error_msg, "Log File Error", ("Ok",))
+        print(f"ERROR: Log File Error: {error_msg}")
         return False
     return True
 
@@ -220,17 +282,33 @@ def validate_codec():
     try:
         codec = dialog.GetValue("CodecBox")
         if not isinstance(codec, str):
-            log_message("Type Error", f"⚠️ Codec must be a string, got {type(codec)}")
+            title = "Codec"
+            error_msg = f"Invalid codec type.\nExpected string but got: {type(codec)}"
+            dialog.ShowMessageBox(error_msg, title, ("Ok",))
+            print(f"ERROR: {title}: {error_msg}")
             return False
         if codec is None or not codec.strip():
-            log_message("Validation Error", "⚠️ No codec selected or empty value")
+            title = "Codec"
+            error_msg = "No codec selected.\nPlease select an output codec."
+            dialog.ShowMessageBox(error_msg, title, ("Ok",))
+            print(f"ERROR: {title}: {error_msg}")
             return False
         if codec.lower() not in ALLOWED_OUTPUT_EXTENSIONS:
-            log_message("Validation Error", f"⚠️ Invalid codec: {codec}. Allowed codecs: {', '.join(ALLOWED_OUTPUT_EXTENSIONS.keys())}")
+            title = "Codec"
+            error_msg = (
+                f"Unsupported codec: {codec}\n\n"
+                f"Supported codecs:\n" + 
+                "\n".join([f"- {c}" for c in ALLOWED_OUTPUT_EXTENSIONS.keys()])
+            )
+            dialog.ShowMessageBox(error_msg, title, ("Ok",))
+            print(f"ERROR: {title}: {error_msg}")
             return False
         return True
     except Exception as e:
-        log_message("Validation Error", f"⚠️ Error validating codec: {str(e)}")
+        title = "Codec"
+        error_msg = f"Error validating codec:\n{str(e)}"
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
         return False
 
 def prepare_output():
@@ -238,22 +316,46 @@ def prepare_output():
     output_name = dialog.GetValue("OutputNameBox").strip()
     codec = dialog.GetValue("CodecBox")
 
+    if not output_name:
+        error_msg = "Please enter an output file name"
+        dialog.ShowMessageBox(error_msg, "Output Error", ("Ok",))
+        print(f"ERROR: Output Error: {error_msg}")
+        return None
+
     try:
         os.makedirs(output_folder, exist_ok=True)
     except Exception as e:
-        log_message("Error", f"⚠️ Failed to create output folder: {e}")
+        error_msg = (
+            f"Failed to create output folder:\n{output_folder}\n\n"
+            f"Error: {str(e)}"
+        )
+        dialog.ShowMessageBox(error_msg, "Output Folder Error", ("Ok",))
+        print(f"ERROR: Output Folder Error: {error_msg}")
         return None
 
     sanitized_output_name = sanitize_filename(output_name)
     if sanitized_output_name != output_name:
-        print(f"ℹ️ Output filename sanitized: {output_name} → {sanitized_output_name}")
+        info_msg = (
+            f"The output filename has been sanitized:\n\n"
+            f"Original: {output_name}\n"
+            f"Sanitized: {sanitized_output_name}"
+        )
+        dialog.ShowMessageBox(info_msg, "Output Name Modified", ("Ok",))
+        print(f"INFO: Output Name Modified: {info_msg}")
         output_name = sanitized_output_name
 
     output_ext = os.path.splitext(output_name)[1].lower()
     if not output_ext:
         output_name += ALLOWED_OUTPUT_EXTENSIONS[codec][0]
     elif output_ext not in ALLOWED_OUTPUT_EXTENSIONS[codec]:
-        log_message("Validation Error", f"⚠️ Invalid extension for codec {codec}: {output_ext}")
+        error_msg = (
+            f"Invalid file extension for codec {codec}:\n"
+            f"Extension: {output_ext}\n\n"
+            f"Allowed extensions for {codec}:\n" +
+            "\n".join([f"- {ext}" for ext in ALLOWED_OUTPUT_EXTENSIONS[codec]])
+        )
+        dialog.ShowMessageBox(error_msg, "Output Extension Error", ("Ok",))
+        print(f"ERROR: Output Extension Error: {error_msg}")
         return None
 
     return os.path.join(output_folder, output_name)
@@ -261,18 +363,27 @@ def prepare_output():
 def get_pools():
     """Get list of available Deadline pools"""
     try:
-        pools = RepositoryUtils.GetPoolNames()
-        return sorted(pools)
+        # Start with 'none' as the first pool
+        all_pools = ['none']
+        # Add any other pools from the repository
+        try:
+            repo_pools = RepositoryUtils.GetPoolNames()
+            if repo_pools:
+                # Convert to Python strings and filter out empty or None values
+                pool_list = [str(p) for p in repo_pools if p]
+                # Add non-'none' pools
+                all_pools.extend(p for p in pool_list if p.lower() != 'none')
+        except:
+            pass
+        return all_pools
     except Exception as e:
         print(f"⚠️ Error getting pools: {e}")
-        return ["none"]
+        return ['none']
 
 def validate_pool():
     """Validates that a pool is selected"""
     pool = dialog.GetValue("PoolBox")
-    if not pool or pool.lower() == "none":
-        log_message("Validation Error", "⚠️ Please select a render pool")
-        return False
+    # Allow 'none' as a valid pool selection
     return True
 
 def write_job_info(job_info_filename, job_name, frame_range, chunk_size):
@@ -282,15 +393,21 @@ def write_job_info(job_info_filename, job_name, frame_range, chunk_size):
             job_file.write(f"Name={job_name}\n")
             job_file.write(f"Frames={frame_range}\n")
             job_file.write(f"ChunkSize={chunk_size}\n")
-            # Add pool to job info
+            # Only write pool if it's not 'none'
             pool = dialog.GetValue("PoolBox")
             if pool and pool.lower() != "none":
                 job_file.write(f"Pool={pool}\n")
     except IOError as e:
-        log_message("File Error", f"⚠️ Failed to write job info file: {e}")
+        title = "Job Info"
+        error_msg = f"Failed to write job info file: {e}"
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
         return False
     except Exception as e:
-        log_message("Unexpected Error", f"⚠️ Failed to create job: {e}")
+        title = "Job Info"
+        error_msg = f"Failed to create job: {e}"
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
         return False
     return True
 
@@ -314,10 +431,16 @@ def write_plugin_info(plugin_info_filename, scene, output_full_path, individual_
             plugin_file.write(f"OutputFile={output_full_path}\n")
             plugin_file.write(f"TempDirectory={temp_dir}\n")
     except IOError as e:
-        log_message("File Error", f"⚠️ Failed to write plugin info file: {e}")
+        title = "Plugin Info"
+        error_msg = f"Failed to write plugin info file: {e}"
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
         return False
     except Exception as e:
-        log_message("Unexpected Error", f"⚠️ Failed to create plugin info: {e}")
+        title = "Plugin Info"
+        error_msg = f"Failed to create plugin info: {e}"
+        dialog.ShowMessageBox(error_msg, title, ("Ok",))
+        print(f"ERROR: {title}: {error_msg}")
         return False
     return True
 
@@ -333,9 +456,28 @@ def validate_input():
     # Return True only if all validations pass
     return all([scene_valid, paths_valid, resolution_valid, log_valid, codec_valid, pool_valid])
 
+def show_message(title, message, is_error=False):
+    """Display a message in the Deadline Monitor GUI"""
+    if is_error:
+        # Use the title as a brief error type and put details in message body
+        dialog.ShowMessageBox(message, title, ("Ok",))
+        print(f"ERROR: {title}: {message}")
+    else:
+        print(f"{title}: {message}")
+
 def log_message(title, message):
-    """Log a message with a title prefix"""
-    print(f"{title}: {message}")
+    """Log a message and show in GUI if it's an error"""
+    is_error = any(err in title.lower() for err in ["error", "warning", "invalid", "failed"])
+    if is_error:
+        if "warning" in title.lower():
+            print(f"WARNING: {title}: {message}")
+        else:
+            print(f"ERROR: {title}: {message}")
+        # Pass the full message directly to show_message
+        show_message(title, message, is_error)
+    else:
+        print(f"INFO: {title}: {message}")
+        show_message(title, message, is_error)
 
 def on_submit(*args):
     job_info_filename = None
@@ -358,10 +500,21 @@ def on_submit(*args):
             start_frame = int(dialog.GetValue("StartFrameBox"))
             end_frame = int(dialog.GetValue("EndFrameBox"))
             if start_frame > end_frame:
-                log_message("Validation Error", "Start frame must be less than or equal to end frame")
+                title = "Frame Range"
+                error_msg = (
+                    f"Invalid frame range configuration:\n\n"
+                    f"Start Frame: {start_frame}\n"
+                    f"End Frame: {end_frame}\n\n"
+                    "Start frame must be less than or equal to end frame"
+                )
+                dialog.ShowMessageBox(error_msg, title, ("Ok",))
+                print(f"ERROR: {title}: {error_msg}")
                 return
         except ValueError:
-            log_message("Validation Error", "Frame values must be valid integers")
+            title = "Frame Range"
+            error_msg = "Frame values must be valid integers.\n\nPlease check Start Frame and End Frame values."
+            dialog.ShowMessageBox(error_msg, title, ("Ok",))
+            print(f"ERROR: {title}: {error_msg}")
             return
             
         quality = dialog.GetValue("QualityBox").strip()
@@ -403,7 +556,9 @@ def on_submit(*args):
         dialog.CloseDialog()
 
     except Exception as e:
-        log_message("Submission Error", f"❌ Unexpected Error:\n{e}")
+        error_msg = f"❌ Unexpected Error:\n{e}"
+        dialog.ShowMessageBox(error_msg, "Submission Error", ("Ok",))
+        print(f"ERROR: Submission Error: {error_msg}")
         cleanup_temp_files(job_info_filename, plugin_info_filename)
 
 def on_cancel(*args):
@@ -425,7 +580,17 @@ def __main__():
         dialog.AddControlToGrid("JobNameBox", "TextControl", "NotchRenderJob", 0, 1)
         dialog.AddControlToGrid("PoolLabel", "LabelControl", "Worker Pool:", 0, 2)
         pool_control = dialog.AddControlToGrid("PoolBox", "ComboControl", "none", 0, 3)
-        dialog.SetItems("PoolBox", get_pools())
+        # Set default pool first
+        dialog.SetValue("PoolBox", "none")
+        # Then set the items list
+        try:
+            pools = get_pools()
+            if pools:
+                dialog.SetItems("PoolBox", pools)
+        except Exception as e:
+            print(f"⚠️ Error setting pool items: {e}")
+            # Ensure at least 'none' is available
+            dialog.SetItems("PoolBox", ["none"])
 
         # Scene File input - back to original row number
         dialog.AddControlToGrid("SceneFileLabel", "LabelControl", "Scene File:", 1, 0)
@@ -480,9 +645,9 @@ def __main__():
         dialog.AddControlToGrid("LayerLabel", "LabelControl", "Layer:", 9, 0)
         dialog.AddControlToGrid("LayerBox", "TextControl", "", 9, 1)
 
-        # Log File
+        # Log File - changed to FileBrowserControl
         dialog.AddControlToGrid("LogLabel", "LabelControl", "Log File:", 10, 0)
-        dialog.AddControlToGrid("LogBox", "TextControl", default_log_path, 10, 1)
+        dialog.AddControlToGrid("LogBox", "FileBrowserControl", default_log_path, 10, 1)
 
         dialog.EndGrid()
 
