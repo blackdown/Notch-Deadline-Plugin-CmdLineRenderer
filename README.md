@@ -7,7 +7,8 @@ A Deadline submission plugin for rendering Notch (.dfx) files using the Notch Co
 - Support for Notch 1.0 Command Line Renderer
 - Multiple output codec options (notchlc, h264, h265, hap, mov, exr, png, jpg, tga, tiff)
 - Frame range rendering with configurable chunk sizes
-- Individual frame export support for image sequences
+- Individual frame export support for image sequences and notchlc codec
+- Real-time filename preview showing actual output format
 - Resolution control (up to 16384x16384)
 - Configurable quality and bitrate settings
 - Custom layer rendering support
@@ -23,7 +24,7 @@ A Deadline submission plugin for rendering Notch (.dfx) files using the Notch Co
 
 ### Output
 - NotchLC Single Frame Sequences:
-  - MOV (notchlc)
+  - MOV (notchlc) with optional individual frame numbering
 - Video Formats:
   - MOV (notchlc, hap, mov codecs)
   - MP4 (h264, h265 codecs)
@@ -78,6 +79,7 @@ The plugin can be configured through `NotchCmdRender.param`:
    - Worker Pool
    - Scene File (.dfx)
    - Output Folder and Filename
+   - Individual Frames option (for notchlc codec)
    - Codec Type
    - Resolution
    - Frame Range
@@ -92,8 +94,16 @@ The plugin can be configured through `NotchCmdRender.param`:
 
 ### Individual Frames Mode
 - Automatically enabled for image codecs (exr, png, jpg, tga, tiff)
-- Appends frame numbers to filenames
+- Optional for notchlc codec (user-selectable)
+- Disabled for other video codecs (h264, h265, hap, mov)
+- Appends frame numbers to filenames only when needed
 - Sets chunk size to 1 for optimal distribution
+- Real-time preview of resulting filename format
+
+### Codec-Specific Behavior
+- Image formats (exr, png, jpeg, tga, tiff): Always use individual frames
+- NotchLC (.mov): Optional individual frames with frame number appending
+- Video formats (h264, h265, hap, mov): Always single file output, no frame numbering
 
 ### Path Validation
 - Checks for unsafe characters
@@ -108,6 +118,12 @@ The plugin can be configured through `NotchCmdRender.param`:
 - Retries locked file operations
 - Cleans up temporary files
 - Logs all operations
+
+### UI Improvements
+- Interactive filename preview shows actual output format with/without frame numbers
+- Codec selection automatically configures related options
+- Logical control layout with related options grouped together
+- Context-aware controls that enable/disable based on compatibility
 
 ## Support
 
