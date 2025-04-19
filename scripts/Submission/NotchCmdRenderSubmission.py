@@ -230,17 +230,74 @@ def cleanup_temp_files(job_info_filename, plugin_info_filename):
     
     return cleanup_success
 
+def update_filename_preview(*args):
+    """Update the preview of the filename format based on current settings"""
+    try:
+        output_name = dialog.GetValue("OutputNameBox").strip()
+        codec = dialog.GetValue("CodecBox").lower()
+        individual_frames = dialog.GetValue("IndividualFramesBox")
+        use_frame_sequences = individual_frames and codec == "notchlc"
+        
+        if not output_name:
+            # If no output name is provided, use a placeholder
+            output_name = "example"
+            
+        # Add extension if missing
+        if not os.path.splitext(output_name)[1]:
+            if codec in ALLOWED_OUTPUT_EXTENSIONS:
+                output_name += ALLOWED_OUTPUT_EXTENSIONS[codec][0]
+        
+        # Add frame number example if using frame sequences
+        if use_frame_sequences:
+            # Get name and extension
+            name, ext = os.path.splitext(output_name)
+            # Format with example frame number
+            preview = f"{name}_0001{ext}"
+            # Add explanation
+            preview += " (with frame numbers)"
+        else:
+            preview = output_name
+        
+        dialog.SetValue("OutputPreviewLabel", f"Example: {preview}")
+    except Exception as e:
+        print(f"Error updating filename preview: {e}")
+        dialog.SetValue("OutputPreviewLabel", "Example: (error generating preview)")
+
+def on_output_name_changed(*args):
+    """Handle changes to the output name field"""
+    update_filename_preview()
+
 def on_codec_changed(*args):
     try:
         selected_codec = dialog.GetValue("CodecBox").lower()
         is_image_format = selected_codec in IMAGE_CODECS
-        dialog.SetValue("IndividualFramesBox", is_image_format)
-        # Only print codec changes, don't show GUI message
-        print(f"INFO: Codec Changed: {selected_codec} - Individual Frames: {is_image_format}")
+        
+        # Handle IndividualFrames checkbox based on codec type
+        if is_image_format:
+            # For image formats, auto-check and keep enabled
+            dialog.SetValue("IndividualFramesBox", True)
+            dialog.SetEnabled("IndividualFramesBox", True)
+        elif selected_codec == "notchlc":
+            # For notchlc, keep enabled but don't auto-check
+            dialog.SetEnabled("IndividualFramesBox", True)
+        else:
+            # For h264, h265, hap, mov - disable the checkbox
+            dialog.SetEnabled("IndividualFramesBox", False)
+            dialog.SetValue("IndividualFramesBox", False)
+        
+        print(f"INFO: Codec Changed: {selected_codec} - Individual Frames: {dialog.GetValue('IndividualFramesBox')}")
+        
+        # Update the filename preview when codec changes
+        update_filename_preview()
+        
     except Exception as e:
         error_msg = f"Error in codec change handler: {e}"
         dialog.ShowMessageBox(error_msg, "Codec Error", ("Ok",))
         print(f"ERROR: Codec Error: {error_msg}")
+
+def on_individual_frames_changed(*args):
+    """Handle changes to the individual frames checkbox"""
+    update_filename_preview()
 
 def validate_scene_file():
     scene = dialog.GetValue("SceneFileBox")
@@ -365,7 +422,8 @@ def validate_codec():
 def prepare_output():
     output_folder = dialog.GetValue("OutputFolderBox")
     output_name = dialog.GetValue("OutputNameBox").strip()
-    codec = dialog.GetValue("CodecBox")
+    codec = dialog.GetValue("CodecBox").lower()
+    individual_frames = dialog.GetValue("IndividualFramesBox")
 
     if not output_name:
         error_msg = "Please enter an output file name"
@@ -464,10 +522,14 @@ def write_job_info(job_info_filename, job_name, frame_range, chunk_size):
 
 def write_plugin_info(plugin_info_filename, scene, output_full_path, individual_frames, codec, bitrate, quality, width, height, start_frame, end_frame, refines, log, layer, fps, temp_dir):
     try:
+        # Determine if we should use frame sequences based on codec and individual frames setting
+        use_frame_sequences = individual_frames and codec.lower() == "notchlc"
+        
         with open(plugin_info_filename, 'w', encoding='utf-8') as plugin_file:
             plugin_file.write(f"SceneFile={scene}\n")
             plugin_file.write(f"OutputPath={output_full_path}\n")
-            plugin_file.write(f"IndividualFrames={individual_frames}\n")
+            # Pass the combined setting that determines whether to use frame numbers in filenames
+            plugin_file.write(f"IndividualFrames={use_frame_sequences}\n")
             plugin_file.write(f"Codec={codec}\n")
             plugin_file.write(f"BitRate={bitrate}\n")
             plugin_file.write(f"Quality={quality}\n")
@@ -647,16 +709,16 @@ def __main__():
         dialog.AddControlToGrid("SceneFileLabel", "LabelControl", "Scene File:", 1, 0)
         dialog.AddControlToGrid("SceneFileBox", "FileBrowserControl", "", 1, 1)
 
-        # Output Path - adjusted row numbers
+        # Output Path - with Individual Frames checkbox moved up
         dialog.AddControlToGrid("OutputFolderLabel", "LabelControl", "Output Folder:", 2, 0)
         dialog.AddControlToGrid("OutputFolderBox", "FolderBrowserControl", "", 2, 1)
+        dialog.AddControlToGrid("IndividualFramesLabel", "LabelControl", "Individual Frames:", 2, 2)
+        individual_frames_control = dialog.AddControlToGrid("IndividualFramesBox", "CheckBoxControl", False, 2, 3)
 
+        # Output File Name - with preview next to it
         dialog.AddControlToGrid("OutputNameLabel", "LabelControl", "Output File Name:", 3, 0)
-        dialog.AddControlToGrid("OutputNameBox", "TextControl", "", 3, 1)
-
-        # Append frame toggle - adjusted row
-        dialog.AddControlToGrid("IndividualFramesLabel", "LabelControl", "Individual Frames:", 3, 2)
-        dialog.AddControlToGrid("IndividualFramesBox", "CheckBoxControl", False, 3, 3)
+        output_name_control = dialog.AddControlToGrid("OutputNameBox", "TextControl", "", 3, 1)
+        dialog.AddControlToGrid("OutputPreviewLabel", "LabelControl", "Example: output.mov", 3, 2, colSpan=2)
 
         # Codec selection
         dialog.AddControlToGrid("CodecLabel", "LabelControl", "Codec Type:", 4, 0)
@@ -715,6 +777,14 @@ def __main__():
         submitButton.ValueModified.connect(on_submit)
         cancelButton.ValueModified.connect(on_cancel)
         codec_control.ValueModified.connect(on_codec_changed)
+        output_name_control.ValueModified.connect(on_output_name_changed)
+        individual_frames_control.ValueModified.connect(on_individual_frames_changed)
+        
+        # Call on_codec_changed initially to set up initial state correctly
+        on_codec_changed()
+        
+        # Initialize the filename preview
+        update_filename_preview()
 
         # Show the dialog
         dialog.ShowDialog(False)
