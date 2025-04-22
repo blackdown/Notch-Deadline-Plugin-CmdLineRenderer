@@ -1,8 +1,7 @@
 # Notch Command Line Render Plugin for Deadline
+A Deadline submission plugin for rendering Notch (.dfx) files using the Notch Command Line Renderer.
 
 ![NURA™ Logo Badge](scripts/Submission/icon.png)
-
-A Deadline submission plugin for rendering Notch (.dfx) files using the Notch Command Line Renderer.
 
 ## Features
 
