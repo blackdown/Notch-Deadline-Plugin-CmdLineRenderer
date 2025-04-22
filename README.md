@@ -72,6 +72,8 @@ The plugin can be configured through `NotchCmdRender.param`:
 - `RenderExecutable`: Path to the NotchCmdLineRender.exe
 - `TempDir`: Optional custom temporary directory for intermediate files
 
+![Submission Dialogue](readme_files/Settings.png)
+
 ## Usage
 
 1. Launch Deadline Monitor
