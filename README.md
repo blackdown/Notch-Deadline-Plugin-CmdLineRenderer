@@ -1,5 +1,5 @@
 # Notch Command Line Render Plugin for Deadline
-A Deadline submission plugin for rendering Notch (.dfx) files using the Notch Command Line Renderer.
+A [Thinkbox Deadline](https://aws.amazon.com/thinkbox-deadline/) submission plugin for rendering Notch (.dfx) files using the Notch Command Line Renderer.
 
 ![NURA™ Logo Badge](scripts/Submission/icon.png)
 
@@ -17,6 +17,8 @@ A Deadline submission plugin for rendering Notch (.dfx) files using the Notch Co
 - Automatic file cleanup
 - Windows UNC path support
 - Detailed logging system
+
+![Submission Dialogue](readme_files/Submission_Dialog.png)
 
 ## Supported File Formats
 
