@@ -20,7 +20,7 @@
 
 ### Fixed
 - Bitrate box overflowing the dialog width — Quality and Bitrate moved to their own row
-- Removed deprecated `mov` codec
+- Image codec farm tasks incorrectly used the full stored frame range instead of the current task frame, causing all workers to overwrite the same output file
 
 ### Removed
 - `mov` codec (no longer supported by the Notch Render Node CLI)
