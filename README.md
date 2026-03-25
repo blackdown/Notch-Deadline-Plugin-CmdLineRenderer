@@ -43,7 +43,7 @@ A [Thinkbox Deadline](https://aws.amazon.com/thinkbox-deadline/) submission plug
 - Windows operating system
 - Notch 2026.1 or higher installed
 - Codemeter 8.20a or higher installed
-- A Notch VFX, RFX, Base, or Pro License
+- A Notch VFX or RFX License (or a dedicated Render Node License)
 - Deadline Repository and Client
 - Valid render pool configuration in Deadline
 
