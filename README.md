@@ -164,6 +164,12 @@ For issues related to:
 - Configuration: Review `NotchCmdRender.param` settings
 - Notch CLI reference: https://manual.notch.one/2026.1/en/docs/reference/notchrendernodecli/
 
+## Support the Project
+
+If this plugin has saved you time on a project, a small donation is always appreciated!
+
+[Donate via PayPal](https://paypal.me/blackdown)
+
 ## License
 
 This plugin is written by Antony Bailey with the permission of 10bit FX Ltd.
