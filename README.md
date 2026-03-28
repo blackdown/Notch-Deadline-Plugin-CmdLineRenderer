@@ -1,8 +1,6 @@
 # Notch Render Node CLI Plugin for Deadline
 A [Thinkbox Deadline](https://aws.amazon.com/thinkbox-deadline/) submission plugin for rendering Notch (.dfx) files using the Notch Render Node CLI.
 
-![NURA™ Logo Badge](scripts/Submission/icon.png)
-
 > **Disclaimer:** This is an independent, community-made plugin and is not an official product of Notch or 10bit FX Ltd. It is provided as-is with no warranty or official support.
 
 > **License:** Donationware for non-commercial use. Commercial use requires a donation. See [LICENSE](LICENSE) for full terms.
