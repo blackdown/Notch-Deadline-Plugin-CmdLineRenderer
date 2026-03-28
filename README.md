@@ -178,4 +178,4 @@ If this plugin has saved you time on a project, a small donation is always appre
 
 Copyright (c) 2026 Antony Bailey / Blackdown Solutions. Written with the permission of 10bit FX Ltd.
 
-Free for personal and non-commercial use with attribution. **Commercial use requires a minimum donation of £200** — see the [LICENSE](LICENSE) file for full terms.
+Donationware for personal and non-commercial use — free to use, but a voluntary donation is encouraged. **Commercial use requires a minimum donation of £200.** Attribution required in all cases. See the [LICENSE](LICENSE) file for full terms.
