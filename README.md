@@ -3,7 +3,9 @@ A [Thinkbox Deadline](https://aws.amazon.com/thinkbox-deadline/) submission plug
 
 ![NURA™ Logo Badge](scripts/Submission/icon.png)
 
-**Last updated: 25 March 2026**
+> **Disclaimer:** This is an independent, community-made plugin and is not an official product of Notch or 10bit FX Ltd. It is provided as-is with no warranty or official support.
+
+**Last updated: 28 March 2026**
 
 ## Features
 
