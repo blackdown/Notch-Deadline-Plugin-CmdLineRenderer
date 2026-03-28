@@ -124,7 +124,7 @@ The plugin can be configured through `NotchCmdRender.param`:
 - Real-time preview of resulting filename format
 
 ### Codec-Specific Behaviour
-- Image formats (exr, png, jpeg, tga, tif): Always use individual frames, `-still` flag passed automatically
+- Image formats (exr, png, jpeg, tga, tif): Always use individual frames
 - NotchLC (.mov): Optional individual frames with frame number appending
 - Video formats (h264, h265, hap, hapa, hapq): Always single file output, no frame numbering
 
