@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Expanded colour space options to match Notch Builder: added `p3linear`, `dcip3`, `p3d65`, `rec2020`, `p3display`, `rec709`
+- Updated README with all new flags, expanded feature list, and updated usage guide
 
 ## [2026.1.2] - 2026-03-28
 

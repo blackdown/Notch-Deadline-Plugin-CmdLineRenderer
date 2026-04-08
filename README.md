@@ -7,7 +7,7 @@ A [Thinkbox Deadline](https://aws.amazon.com/thinkbox-deadline/) submission plug
 
 If this plugin has been useful, consider [buying me a coffee ☕](https://paypal.me/blackdown) — it helps keep projects like this going!
 
-**Last updated: 28 March 2026**
+**Last updated: 8 April 2026**
 
 ## Features
 
@@ -21,11 +21,16 @@ If this plugin has been useful, consider [buying me a coffee ☕](https://paypal
 - Configurable quality and bitrate settings
 - Custom layer rendering by index or name
 - GPU selection for multi-GPU render nodes
-- Colour space and AOV buffer support
+- Colour space support (acescg, srgblinear, srgbgamma, p3linear, dcip3, p3d65, rec2020, p3display, rec709 and aliases)
+- AOV buffer output support
+- Tiled rendering for large canvas sizes that exceed GPU buffer limits
+- Pre-roll and auto pre-roll controls
+- Metadata JSON export
+- Debug logging option
+- Stdout logging always enabled for reliable headless farm operation
 - Comprehensive path validation and sanitization
 - Automatic file cleanup
 - Windows UNC path support
-- Detailed logging system
 - Unit test suite for core render argument logic
 
 ![Submission Dialogue](readme_files/Submission_Dialog.png)
@@ -96,15 +101,19 @@ The plugin can be configured through `NotchCmdRender.param`:
    - Output Folder and Filename
    - Individual Frames option (for notchlc codec)
    - Codec Type
-   - Resolution
-   - Frame Range
-   - FPS
+   - Still Image (optional — see below)
    - Quality/Bitrate (optional)
+   - Resolution
+   - Frame Range and FPS
    - Refines (optional)
    - Layer index or Layer Name (optional)
    - GPU (optional, for multi-GPU machines)
    - Colour Space (optional)
    - AOV buffer (optional)
+   - Pre-roll Start and Auto Pre-roll (optional)
+   - Tiled rendering with Tile Size and Overscan (optional)
+   - Metadata export file (optional)
+   - Debug logging (optional)
    - Log File (optional)
 5. Click "Submit" to send the job to Deadline
 
@@ -130,10 +139,16 @@ The plugin can be configured through `NotchCmdRender.param`:
 The "Still Image" checkbox passes the `-still` flag to the renderer. This pre-rolls every individual frame from the beginning, meaning each frame is treated as if it were the first. As a result, temporal effects such as motion blur are lost and image sequences will render significantly slower. Only enable this for genuinely static content where no temporal effects are present. Do not use it for image sequences that contain motion, as it will produce incorrect results.
 
 ### New in 2026.1
-- Layer Name (`-layername`): Select a composition layer by name instead of index
-- GPU (`-gpu`): Pin rendering to a specific GPU adapter — useful on multi-GPU render nodes
-- Colour Space (`-colourspace`): Set output colour space (acescg, aces, srgblinear, linear, srgbgamma, gamma)
-- AOV (`-aov`): Output a specific render buffer (normal, depth, cryptomatte, uv, objectid, ao, and others)
+- **Layer Name** (`-layername`): Select a composition layer by name instead of index
+- **GPU** (`-gpu`): Pin rendering to a specific GPU adapter — useful on multi-GPU render nodes
+- **Colour Space** (`-colourspace`): Set output colour space. Available options: `acescg`, `aces`, `srgblinear`, `linear`, `srgbgamma`, `gamma`, `p3linear`, `dcip3`, `p3d65`, `rec2020`, `p3display`, `rec709`
+- **AOV** (`-aov`): Output a specific render buffer (`normal`, `normals`, `depth`, `cryptomatte`, `uv`, `uvs`, `bounceuv`, `bounceuvs`, `objectid`, `ao`)
+- **Auto Pre-roll** (`-autopreroll`): Enable or disable automatic pre-rolling (enabled by default)
+- **Pre-roll Start** (`-prerollstart`): Set the pre-roll duration in seconds, corresponding to the Pre-Roll parameter in Notch Builder
+- **Tiled Rendering** (`-tiled`): Tile the render for large canvas sizes that won't fit in a GPU buffer. Use with **Tile Size** (`-tilesize`) and **Overscan** (`-overscan`) for seamless blending in post
+- **Metadata** (`-metadata`): Export render metadata to a JSON file
+- **Debug** (`-debug`): Enable extra logging output
+- **Stdout logging** (`-stdout`): Always enabled automatically — ensures reliable log capture in headless farm environments
 
 ### Path Validation
 - Checks for unsafe characters
